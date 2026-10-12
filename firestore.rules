@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// Access model
+//   Owners (listed below) are always administrators.
+//   Everyone else must have an active document at /users/{their email} with role admin | staff | viewer.
+//   viewer: read only.  staff: items + stock in/out + request adjustments.  admin: everything.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Keep in sync with OWNER_EMAILS in public/firebase-config.js (lowercase).
+    function owners() { return ['owner_email@gmail.com']; }
+
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function email() { return request.auth.token.email.lower(); }
+    function userDoc() { return /databases/$(database)/documents/users/$(email()); }
+    function isOwner() { return signedIn() && email() in owners(); }
+    function role() {
+      return isOwner() ? 'admin'
+        : (exists(userDoc()) && get(userDoc()).data.get('active', true) == true ? get(userDoc()).data.role : 'none');
+    }
+    function isMember() { return signedIn() && role() in ['admin', 'staff', 'viewer']; }
+    function isStaff()  { return signedIn() && role() in ['admin', 'staff']; }
+    function isAdmin()  { return signedIn() && role() == 'admin'; }
+    function settings() { return get(/databases/$(database)/documents/config/settings).data; }
+    // A person's own daily ledger/audit document: id is "<day>_<their email>" and it records them as uid.
+    function ownDaily(docId) {
+      return request.resource.data.uid == email() && docId == request.resource.data.day + '_' + email();
+    }
+
+    match /users/{userEmail} {
+      allow read: if isMember() || (signedIn() && userEmail == email());
+      allow write: if isAdmin();
+      // People may refresh their own name/photo/last sign-in, nothing else.
+      allow update: if signedIn() && userEmail == email() && exists(userDoc())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photo', 'lastLogin']);
+    }
+
+    match /config/{docId} {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+
+    match /items/{itemId} {
+      allow read: if isMember();
+      allow create: if isStaff();
+      // Only administrators activate / deactivate items.
+      allow update: if isAdmin() || (isStaff() && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+
+    // Ledger: one document per person per day holding that day's movements.
+    // Staff add to their own day; marking an entry reversed (any person's day) is admin-only.
+    match /ledger/{docId} {
+      allow read: if isMember();
+      allow create, update: if isAdmin() || (isStaff() && ownDaily(docId));
+      allow delete: if isAdmin();
+    }
+
+    match /audit/{docId} {
+      allow read: if isAdmin();
+      allow create, update: if isMember() && ownDaily(docId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /adjustments/{adjId} {
+      allow read: if isMember();
+      allow create: if isStaff() && request.resource.data.by == email() && request.resource.data.status == 'PENDING';
+      // Approve / reject: admins, or the requester themself when approval is switched off in Settings.
+      allow update: if isAdmin()
+        || (isStaff() && resource.data.by == email() && settings().get('approval', true) == false);
+      allow delete: if isAdmin();
+    }
+  }
+}
