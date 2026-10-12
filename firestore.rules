@@ -8,7 +8,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Keep in sync with OWNER_EMAILS in public/firebase-config.js (lowercase).
-    function owners() { return ['owner_email@gmail.com']; }
+    function owners() { return ['anthonlouie@gmail.com']; }
 
     function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
     function email() { return request.auth.token.email.lower(); }
