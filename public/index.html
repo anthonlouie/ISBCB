@@ -1196,7 +1196,7 @@ document.addEventListener("click", async ev => {
   const pref = ev.target.closest("[data-pref]");
   if (pref) { setPref(pref.dataset.pref, pref.dataset.v); return; }
   const t = ev.target.closest("[data-act],[data-go],[data-item],[data-txn],[data-page],[data-sort]");
-  if (!t) { if (document.body.classList.contains("nav") && !ev.target.closest(".rail")) document.body.classList.remove("nav"); return; }
+  if (!t) { if (document.body.classList.contains("nav") && !ev.target.closest(".rail, #menuBtn")) document.body.classList.remove("nav"); return; }
   if (t.dataset.go) {
     ev.preventDefault(); const r = t.dataset.go, set = t.dataset.set ? JSON.parse(t.dataset.set) : {};
     if (r === "items" || r === "history") S.f[r] = { ...(r === "items" ? {} : {}), ...set }; else Object.assign(S.f[r] ||= {}, set);
