@@ -583,7 +583,7 @@ afterRender.dashboard = () => {
     if (e.type === "IN") inQ[ix] += e.qin; else if (e.type === "OUT") outQ[ix] += e.qout;
     else if (e.type === "REV") { const o = S.byId.get(e.reverses); if (o?.type === "IN") inQ[ix] -= e.qout; if (o?.type === "OUT") outQ[ix] -= e.qin; }
   }
-  const tip = { callbacks: { label: c => `${c.dataset.label}: ${qty(c.parsed.y ?? c.parsed.x)}` } };
+  const tip = { callbacks: { label: c => `${c.dataset.label}: ${qty(c.raw)}` } };
   const go = (route, set) => { Object.assign(S.f[route] ||= {}, set); S.page[route] = 1; location.hash = route; };
   charts.push(new Chart($("#c-month"), { type: "bar",
     data: { labels: months, datasets: [{ label: "Stock in", data: inQ, backgroundColor: C("--in"), ...bar }, { label: "Stock out", data: outQ, backgroundColor: C("--out"), ...bar }] },
