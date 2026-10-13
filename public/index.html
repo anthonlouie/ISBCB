@@ -59,6 +59,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .rail nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .rail .who { margin-top: 18px; padding: 10px; border-radius: 10px; background: var(--sunk); font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
 .rail .who img { width: 28px; height: 28px; border-radius: 50%; }
+.rail .who .who-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail .signout { width: 100%; margin-top: 8px; }
 .prefs { margin-top: auto; padding: 14px 4px 4px; display: grid; gap: 10px; }
 .prefs .lbl { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
 .seg { display: flex; background: var(--sunk); border-radius: 9px; padding: 3px; gap: 2px; }
@@ -211,13 +213,14 @@ window.claude = { use: async name => (await window.__fbReady)(name) };</script>
     <div class="brand"><b id="brandName">BCB-Berkeley</b><span>Inventory management</span></div>
     <nav id="nav"></nav>
     <div class="who" id="who"><span class="muted">Connecting…</span></div>
+    <button type="button" class="btn sm signout" id="signout" data-act="signout" hidden>Sign out</button>
     <div class="prefs">
       <div><div class="lbl" id="lbl-theme">Theme</div><div class="seg" role="group" aria-labelledby="lbl-theme"><button type="button" data-pref="theme" data-v="auto">Auto</button><button type="button" data-pref="theme" data-v="light">Light</button><button type="button" data-pref="theme" data-v="dark">Dark</button></div></div>
       <div><div class="lbl" id="lbl-density">Density</div><div class="seg" role="group" aria-labelledby="lbl-density"><button type="button" data-pref="density" data-v="comfortable">Comfortable</button><button type="button" data-pref="density" data-v="compact">Compact</button></div></div>
     </div>
   </aside>
   <div style="min-width:0">
-    <div class="topbar"><button class="btn sm" id="menuBtn" aria-label="Open menu">☰</button><b id="topName">BCB-Berkeley</b></div>
+    <div class="topbar"><button class="btn sm" id="menuBtn" aria-label="Open menu">☰</button><b id="topName">BCB-Berkeley</b><button type="button" class="btn sm" id="signout-top" data-act="signout" hidden aria-label="Sign out">Sign out</button></div>
     <main id="main"><div class="card"><h2>Loading inventory…</h2><p class="muted">Connecting to the shared inventory database.</p></div></main>
   </div>
 </div>
@@ -472,7 +475,8 @@ function renderNav() {
 }
 function renderWho() {
   const p = S.me;
-  $("#who").innerHTML = p ? `${p.avatarUrl ? `<img alt="" src="${esc(p.avatarUrl)}" referrerpolicy="no-referrer">` : ""}<div style="min-width:0;flex:1"><div><b></b></div><div class="muted">${ROLE[S.role]}</div><button type="button" class="linkbtn" onclick="window.__fbSignOut()">Sign out</button></div>` : `<span class="muted">Not signed in</span>`;
+  $("#who").innerHTML = p ? `${p.avatarUrl ? `<img alt="" src="${esc(p.avatarUrl)}" referrerpolicy="no-referrer">` : ""}<div style="min-width:0;flex:1"><div class="who-name"><b></b></div><div class="muted">${ROLE[S.role]}</div></div>` : `<span class="muted">Not signed in</span>`;
+  $("#signout").hidden = !p; $("#signout-top").hidden = !p;
   if (p) $("#who b").textContent = p.name || "You";
 }
 function head(title, sub, actions = "") {
@@ -1214,6 +1218,12 @@ document.addEventListener("click", async ev => {
       const box = $("#s-search"); box.value = ""; filterItemSelect(box);
       const sel = $("#s-item"); sel.value = t.dataset.id; sel.size = 1; clearFieldError(sel); refreshPanel();
       ($("#s-qty") || $("#a-actual"))?.focus(); return;
+    }
+    if (a === "signout") {
+      if (t.dataset.confirming) { window.__fbSignOut(); return; }
+      document.querySelectorAll("[data-act=signout]").forEach(b => { b.dataset.confirming = "1"; b.textContent = "Tap again to sign out"; });
+      setTimeout(() => document.querySelectorAll("[data-act=signout]").forEach(b => { delete b.dataset.confirming; b.textContent = "Sign out"; }), 4000);
+      return;
     }
     if (a === "close-overlay") { if (ev.target === t) { S.modal = null; renderModal(); } return; }
     if (a === "close") { S.modal = null; renderModal(); return; }
